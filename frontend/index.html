@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 图像质量智能分析系统 - Finks</title>
+    <style>
+        :root {
+            /* Light Theme */
+            --primary: #4f46e5; /* Indigo */
+            --primary-hover: #4338ca;
+            --secondary: #ec4899; /* Pink for vitality */
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-gradient: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --text-main: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        [data-theme="dark"] {
+            /* Dark Theme */
+            --primary: #6366f1;
+            --primary-hover: #818cf8;
+            --secondary: #f472b6;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text-main: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-attachment: fixed; /* For full page gradient */
+        }
+
+        /* Vitality Animation Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 60%),
+                        radial-gradient(circle, rgba(236, 72, 153, 0.1) 0%, transparent 60%);
+            background-size: 50% 50%, 60% 60%;
+            background-position: 0 0, 100% 100%;
+            animation: pulse-bg 15s infinite alternate;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        @keyframes pulse-bg {
+            0% { transform: scale(1); opacity: 0.5; }
+            100% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .container {
+            max-width: 1100px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* Glassmorphism Card */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: var(--glass-border);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            color: var(--text-main);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 16px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255,255,255,0.05);
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 250px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .upload-area.has-image {
+            padding: 10px;
+            border-style: solid;
+            min-height: auto;
+            background: transparent;
+        }
+        
+        .upload-area.has-image:hover {
+             transform: none;
+             border-color: var(--primary);
+        }
+
+        .upload-placeholder {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none; /* 让点击事件穿透到父级 */
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        #preview-img {
+            width: 100%;
+            height: auto;
+            border-radius: 12px;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            object-fit: contain;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 20px;
+            transition: all 0.3s;
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .btn:hover::after {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+        }
+
+        .btn:disabled {
+            background: var(--text-secondary);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Results Styles */
+        .grade-badge {
+            font-size: 3.5rem;
+            font-weight: 800;
+            text-align: center;
+            margin: 10px 0;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .grade-Excellent { color: var(--success); }
+        .grade-Good { color: var(--primary); }
+        .grade-Average { color: var(--warning); }
+        .grade-Poor { color: var(--danger); }
+
+        .score-display {
+            text-align: center;
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+        }
+        .score-display span {
+            font-weight: bold;
+            color: var(--text-main);
+            font-size: 1.4rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .metric-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 5px 0;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .score-bar-bg {
+            background: var(--border-color);
+            height: 6px;
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .score-bar-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            border-radius: 3px;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .suggestions ul {
+            padding-left: 20px;
+            margin: 0;
+        }
+        .suggestions li {
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Loader */
+        .loader {
+            display: none;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            box-shadow: var(--shadow);
+            z-index: 100;
+            color: var(--text-main);
+            backdrop-filter: blur(5px);
+        }
+        
+        .theme-toggle:hover {
+            transform: rotate(15deg);
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            padding-bottom: 20px;
+        }
+        
+        .author-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-left: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" id="theme-btn" title="切换主题">
+        🌞
+    </button>
+
+    <div class="header">
+        <h1>📸 AI 图像质量智能分析</h1>
+        <p>专业级视觉评估 • 智能优化建议 • 实时生成报告</p>
+    </div>
+
+    <div class="container">
+        <!-- Left Column: Upload -->
+        <div class="card">
+            <h2>📤 上传图片</h2>
+            <div class="upload-area" id="drop-zone">
+                <div id="upload-placeholder" class="upload-placeholder">
+                    <div class="upload-icon">☁️</div>
+                    <p>拖拽图片到此处，或点击浏览文件</p>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 5px;">支持 JPG, PNG, WEBP 等常见格式</p>
+                </div>
+                <img id="preview-img" alt="">
+                <input type="file" id="file-input" accept="image/*" style="display: none">
+            </div>
+            <button id="analyze-btn" class="btn" disabled>✨ 开始智能分析</button>
+            <div class="loader" id="loader"></div>
+        </div>
+
+        <!-- Right Column: Results -->
+        <div class="card" id="results-card" style="opacity: 0.6; pointer-events: none; filter: grayscale(0.8);">
+            <h2>📊 分析报告</h2>
+            
+            <div class="grade-badge" id="final-grade">--</div>
+            <div class="score-display">综合质量评分: <span id="final-score">0</span>/100</div>
+
+            <h3 style="color: var(--text-main); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">详细指标分析</h3>
+            <div class="metrics-grid">
+                <div class="metric-item">
+                    <div class="metric-label">清晰度 (Sharpness)</div>
+                    <div class="metric-value" id="m-sharpness">0</div>
+                    <div class="score-bar-bg"><div class="score-bar-fill" id="bar-sharpness"></div></div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">亮度 (Brightness)</div>
+                    <div class="metric-value" id="m-brightness">0</div>
+                    <div class="score-bar-bg"><div class="score-bar-fill" id="bar-brightness"></div></div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">对比度 (Contrast)</div>
+                    <div class="metric-value" id="m-contrast">0</div>
+                    <div class="score-bar-bg"><div class="score-bar-fill" id="bar-contrast"></div></div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">噪声水平 (Noise)</div>
+                    <div class="metric-value" id="m-noise">0</div>
+                    <div class="score-bar-bg"><div class="score-bar-fill" id="bar-noise"></div></div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">色彩表现 (Colorfulness)</div>
+                    <div class="metric-value" id="m-colorfulness">0</div>
+                    <div class="score-bar-bg"><div class="score-bar-fill" id="bar-colorfulness"></div></div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">AI 美学评分 (Aesthetic)</div>
+                    <div class="metric-value" id="ai-score-val">0</div>
+                    <div class="score-bar-bg"><div class="score-bar-fill" id="ai-score-bar"></div></div>
+                </div>
+            </div>
+
+            <h3 style="color: var(--text-main); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px; margin-top: 25px;">💡 优化建议</h3>
+            <div class="suggestions" id="suggestions">
+                <ul><li>请先上传图片，AI 将为您生成个性化建议。</li></ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        © 2024 AI Image Quality System <span class="author-badge">Designed by Finks</span>
+    </div>
+
+    <script>
+        // DOM Elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const previewImg = document.getElementById('preview-img'); // Changed ID
+        const uploadPlaceholder = document.getElementById('upload-placeholder');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const loader = document.getElementById('loader');
+        const resultsCard = document.getElementById('results-card');
+        const themeBtn = document.getElementById('theme-btn');
+        const htmlEl = document.documentElement;
+
+        let currentFile = null;
+
+        // Theme Toggle Logic
+        themeBtn.addEventListener('click', () => {
+            const currentTheme = htmlEl.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            htmlEl.setAttribute('data-theme', newTheme);
+            themeBtn.textContent = newTheme === 'light' ? '🌞' : '🌙';
+        });
+
+        // Upload Handling
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileSelect);
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if(e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect();
+            }
+        });
+
+        function handleFileSelect() {
+            if (fileInput.files && fileInput.files[0]) {
+                currentFile = fileInput.files[0];
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    // Update UI for Image Preview inside the box
+                    previewImg.src = e.target.result;
+                    previewImg.style.display = 'block';
+                    
+                    // Hide placeholder
+                    uploadPlaceholder.style.display = 'none';
+                    
+                    // Adjust container style
+                    dropZone.classList.add('has-image');
+                    
+                    analyzeBtn.disabled = false;
+                };
+                reader.readAsDataURL(currentFile);
+            }
+        }
+
+        // Analysis Handling
+        analyzeBtn.addEventListener('click', async () => {
+            if (!currentFile) return;
+
+            // UI State
+            analyzeBtn.disabled = true;
+            analyzeBtn.textContent = '🔄 分析中...';
+            loader.style.display = 'block';
+            resultsCard.style.opacity = '0.6';
+            resultsCard.style.filter = 'grayscale(0.8)';
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+
+            try {
+                // Assuming backend is running on localhost:8000
+                const response = await fetch(`${API_BASE_URL}/analyze`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('Analysis failed');
+                
+                const data = await response.json();
+                displayResults(data.analysis);
+                
+                // Active State for Results
+                resultsCard.style.opacity = '1';
+                resultsCard.style.pointerEvents = 'auto';
+                resultsCard.style.filter = 'none';
+                
+            } catch (error) {
+                alert('分析失败，请重试: ' + error.message);
+                console.error(error);
+            } finally {
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = '✨ 重新分析';
+                loader.style.display = 'none';
+            }
+        });
+
+        function displayResults(data) {
+            // Grade Mapping (English -> Chinese)
+            const gradeMap = {
+                'Excellent': '卓越',
+                'Good': '良好',
+                'Average': '一般',
+                'Poor': '较差'
+            };
+            const cnGrade = gradeMap[data.grade] || data.grade;
+
+            // Grade & Final Score
+            const gradeEl = document.getElementById('final-grade');
+            gradeEl.textContent = cnGrade;
+            // Keep the class name English for CSS mapping
+            gradeEl.className = 'grade-badge grade-' + data.grade;
+            
+            document.getElementById('final-score').textContent = data.final_score;
+
+            // Update AI Score
+            // Check if elements exist before updating
+            const aiValEl = document.getElementById('ai-score-val');
+            const aiBarEl = document.getElementById('ai-score-bar');
+            if (aiValEl && aiBarEl) {
+                const aiScore = data.scores.ai_aesthetic_score || 0;
+                aiValEl.textContent = aiScore;
+                aiBarEl.style.width = aiScore + '%';
+            }
+
+            // Metrics
+            updateMetric('sharpness', data.metrics.sharpness, data.scores.sharpness_score);
+            updateMetric('brightness', data.metrics.brightness, data.scores.brightness_score);
+            updateMetric('contrast', data.metrics.contrast, data.scores.contrast_score);
+            updateMetric('noise', data.metrics.noise, data.scores.noise_score);
+            updateMetric('colorfulness', data.metrics.colorfulness, data.scores.colorfulness_score);
+
+            // Suggestions Translation & Display
+            const suggestionsList = document.getElementById('suggestions').querySelector('ul');
+            suggestionsList.innerHTML = '';
+            
+            // Simple mapping for demo purposes - in a real app, backend should return codes or translated text
+            // Or we translate on frontend based on partial matching
+            data.suggestions.forEach(s => {
+                const li = document.createElement('li');
+                li.textContent = translateSuggestion(s);
+                suggestionsList.appendChild(li);
+            });
+        }
+
+        function translateSuggestion(text) {
+            // Basic translation helper
+            if (text.includes("blurry")) return "📸 图像较模糊，建议拍摄时保持相机稳定或对焦准确。";
+            if (text.includes("too dark")) return "🌑 图像过暗，建议使用闪光灯或在光线充足处拍摄。";
+            if (text.includes("overexposed")) return "☀️ 图像过曝，建议降低曝光度或避开强光直射。";
+            if (text.includes("Contrast is low")) return "🌫️ 对比度较低，图像看起来发灰，建议后期调整对比度。";
+            if (text.includes("High noise")) return "📉 检测到明显噪点，建议降低 ISO 或改善照明环境。";
+            if (text.includes("great")) return "🎉 图像质量非常棒！";
+            return text; // Fallback
+        }
+
+        function updateMetric(name, value, score) {
+            document.getElementById('m-' + name).textContent = value;
+            const bar = document.getElementById('bar-' + name);
+            bar.style.width = score + '%';
+            
+            // Color coding for bars
+            if (score > 80) bar.style.backgroundColor = 'var(--success)';
+            else if (score > 50) bar.style.backgroundColor = 'var(--primary)';
+            else bar.style.backgroundColor = 'var(--danger)';
+        }
+    </script>
+</body>
+</html>
